@@ -3,21 +3,19 @@ package net.zomis.games.server2.ais
 import com.fasterxml.jackson.databind.ObjectMapper
 import klog.KLoggers
 import net.zomis.core.events.EventSystem
+import net.zomis.games.dsl.Actionable
 import net.zomis.games.dsl.impl.GameImpl
+import net.zomis.games.server.games.ServerGame
 import net.zomis.games.server2.*
-import net.zomis.games.server2.games.GameStartedEvent
-import net.zomis.games.server2.games.ServerGame
-import net.zomis.games.server2.games.MoveEvent
-import net.zomis.games.server2.games.PlayerGameMoveRequest
 import java.util.UUID
 import java.util.concurrent.Executors
 
-data class AIMoveRequest(val client: Client, val game: ServerGame)
-data class DelayedAIMoves(val move: PlayerGameMoveRequest)
+data class AIMoveRequest<T: Any>(val client: Client, val game: ServerGame<T>)
+data class DelayedAIMoves<T: Any>(val game: ServerGame<T>, val action: Actionable<T, Any>)
 
 val ServerAIProvider = "server-ai"
 
-class ServerAI(val gameType: String, val name: String, val perform: ServerGameAI) {
+class ServerAI<T: Any>(val gameType: String, val name: String, val perform: ServerGameAI<T>) {
 
     private val logger = KLoggers.logger(this)
 
@@ -41,6 +39,7 @@ class ServerAI(val gameType: String, val name: String, val perform: ServerGameAI
     lateinit var client: AIClient
 
     fun register(events: EventSystem) {
+        /*
         events.listen("ai move check $name", MoveEvent::class, {
             it.game.players.contains(client)
         }, {
@@ -79,13 +78,15 @@ class ServerAI(val gameType: String, val name: String, val perform: ServerGameAI
             "gameTypes" to listOf(gameType), "maxGames" to 100
         )))
         events.execute(ClientJsonMessage(client, interestingGames))
+        */
     }
 
 }
-
+/*
 fun PlayerGameMoveRequest.serialize(gameImpl: GameImpl<*>): PlayerGameMoveRequest {
     if (this.serialized) return this
     val serializedMove = gameImpl.actions.type(this.moveType)!!
             .actionType.serialize(this.move)
     return PlayerGameMoveRequest(this.game, this.player, this.moveType, serializedMove, true)
 }
+*/

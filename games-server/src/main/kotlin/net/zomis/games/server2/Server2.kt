@@ -8,18 +8,14 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import klog.KLoggers
 import net.zomis.core.events.EventSystem
 import net.zomis.games.Features
-import net.zomis.games.dsl.GameSpec
+import net.zomis.games.server.ServerGamesSystem
+import net.zomis.games.server.games.GameIdGenerator
 import net.zomis.games.server2.ais.AIRepository
 import net.zomis.games.server2.ais.ServerAIs
-import net.zomis.games.server2.ais.TTTQLearn
 import net.zomis.games.server2.db.DBIntegration
 import net.zomis.games.server2.db.aurora.LinStats
 import net.zomis.games.server2.db.aurora.StatsDB
-import net.zomis.games.server2.debug.AIGames
 import net.zomis.games.server2.games.*
-import net.zomis.games.server2.invites.InviteOptions
-import net.zomis.games.server2.invites.InviteSystem
-import net.zomis.games.server2.invites.LobbySystem
 import net.zomis.games.server2.javalin.auth.JavalinFactory
 import net.zomis.games.server2.javalin.auth.LinAuth
 import net.zomis.games.server2.ws.Server2WS
@@ -96,16 +92,9 @@ class Server2(val events: EventSystem) {
 
     private val uuidGenerator: () -> String = { UUID.randomUUID().toString() }
     private val dslGames = ServerGames.games
-    private val lobbySystem = LobbySystem(features)
-    private val gameCallback = GameCallback(
-        gameLoader = { gameId -> dbIntegration?.loadGame(gameId) },
-        moveHandler = { events.execute(it) }
-    )
-    val gameSystem = GameSystem(lobbySystem::gameClients, gameCallback)
     var dbIntegration: DBIntegration? = null
 
     val messageRouter = MessageRouter(this)
-        .route("games", gameSystem.router)
 
     private val messageHandler = MessageHandler(events, this.messageRouter)
 
@@ -124,55 +113,39 @@ class Server2(val events: EventSystem) {
             events.execute(ClientJsonMessage(it.client, mapper.readTree(it.message)))
         })
 
-        features.add { feat, ev -> gameSystem.setup(feat, ev, config.idGenerator) { dbIntegration } }
-
-        dslGames.values.forEach { spec ->
-            val dslGameSystem = DslGameSystem(spec as GameSpec<Any>) { dbIntegration }
-            events.with(dslGameSystem::setup)
-        }
-
-        features.add(SimpleMatchMakingSystem()::setup)
         events.with(ServerConsole()::register)
-        features.add(GameListSystem()::setup)
+//        features.add(GameListSystem()::setup)//x
         events.listen("Route", ClientJsonMessage::class, {it.data.has("route")}) {
             this.messageRouter.handle(it.data["route"].asText(), it)
         }
-        val executor = Executors.newScheduledThreadPool(2)
+        val executor = Executors.newScheduledThreadPool(2)//x
         if (config.githubClient.isNotEmpty()) {
             LinAuth(javalin, config.githubConfig(), config.googleConfig()).register()
         }
-        val aiRepository = AIRepository()
+        val aiRepository = AIRepository()//x
         if (config.database) {
-            val dbIntegration = DBIntegration()
+            val dbIntegration = DBIntegration() // dep
             this.dbIntegration = dbIntegration
             features.add(dbIntegration::register)
-            LinReplay(aiRepository, dbIntegration).setup(javalin)
-            LinStats(StatsDB(dbIntegration.superTable)).setup(events, javalin)
+            LinReplay(aiRepository, dbIntegration).setup(javalin)// dep
+            LinStats(StatsDB(dbIntegration.superTable)).setup(events, javalin) // dep
         }
+
+        val gamesSystem2 = ServerGamesSystem(executor, dbIntegration).addGames(dslGames.values)
+        messageRouter.route("games", gamesSystem2.router)
+        messageRouter.route("lobby", gamesSystem2.lobby.router)
+
         val authCallback = AuthorizationCallback { dbIntegration?.superTable?.cookieAuth(it) }
         messageRouter.route("auth", AuthorizationSystem(events, authCallback).router)
 
-        events.with(lobbySystem::setup)
-        messageRouter.route("lobby", lobbySystem.router)
-        features.add(AIGames(lobbySystem::gameClients)::setup)
-        features.add(TVSystem(lobbySystem::gameClients)::register)
-        fun createGameCallback(gameType: String, options: InviteOptions): ServerGame
-            = gameSystem.getGameType(gameType)!!.createGame(options)
-        messageRouter.route("invites", InviteSystem(
-            gameClients = lobbySystem::gameClients,
-            createGameCallback = ::createGameCallback,
-            startGameExecutor = { events.execute(it) },
-            inviteIdGenerator = uuidGenerator
-        ).router)
-
-        events.with { e -> ServerAIs(aiRepository, dslGames.keys.toSet()).register(e, executor) }
+        events.with { e -> ServerAIs(aiRepository, dslGames.keys.toSet()).register(e, executor) }//x
 
         val engine = ScriptEngineManager().getEngineByExtension("kts")!!
         events.listen("Kotlin script", ConsoleEvent::class, {it.input.startsWith("kt ")}, {
             val result = engine.eval(it.input.substring("kt ".length))
             println(result)
         })
-        events.with(TTTQLearn(gameSystem)::setup)
+//        events.with(TTTQLearn(gameSystem)::setup)//x
 
         events.listen("Stop Javalin", ShutdownEvent::class, {true}, {javalin.stop()})
         events.listen("Start Javalin", StartupEvent::class, {true}, {javalin.start()})

@@ -49,7 +49,7 @@ import Socket from "@/socket"
 
 export default {
     name: "InviteScreen",
-    props: ["inviteId"],
+    props: ["inviteId", "gameType"],
     components: { InvitePlayer },
     mounted() {
         console.log("InviteScreen mounted")
@@ -57,26 +57,29 @@ export default {
             this.$store.dispatch("lobby/joinAndList");
         }
         this.$store.dispatch('wall').then(() => {
-            this.$store.dispatch("lobby/inviteView", { inviteId: this.inviteId })
+            this.$store.dispatch("lobby/inviteView", { gameType: this.gameType, inviteId: this.inviteId })
         })
     },
     methods: {
         joinInvite() {
-            Socket.route(`invites/${this.inviteId}/respond`, { accepted: true });
+            Socket.route(`${this.routePrefix}/respond`, { accepted: true });
         },
         declineInvite() {
-            Socket.route(`invites/${this.inviteId}/respond`, { accepted: false });
+            Socket.route(`${this.routePrefix}/respond`, { accepted: false });
             this.$router.push("/")
         },
         cancelInvite() {
-            Socket.route(`invites/${this.inviteId}/cancel`);
+            Socket.route(`${this.routePrefix}/cancel`);
             this.$router.push("/")
         },
         startInvite() {
-            Socket.route(`invites/${this.inviteId}/start`);
+            Socket.route(`${this.routePrefix}/start`);
         }
     },
     computed: {
+        routePrefix() {
+            return `games/${this.gameType}/${this.inviteId}/invite`
+        },
         gameStartable() {
             if (!this.invite) return false;
             let playerCount = this.invite.players.length;

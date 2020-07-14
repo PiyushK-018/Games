@@ -15,6 +15,7 @@ class GameplayCallbacksList<T: Any>(val list: List<GameplayCallbacks<T>>): Gamep
 
     override fun onElimination(elimination: PlayerElimination) = list.forEach {it.onElimination(elimination)}
     override fun onLog(log: List<ActionLogEntry>) = list.forEach{it.onLog(log)}
+    override fun onGameOver() = list.forEach { it.onGameOver() }
 }
 
 class GameEntryPoint<T : Any>(private val gameSpec: GameSpec<T>) {

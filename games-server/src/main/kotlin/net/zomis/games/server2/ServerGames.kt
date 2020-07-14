@@ -1,6 +1,7 @@
 package net.zomis.games.server2
 
 import net.zomis.games.dsl.GameSpec
+import net.zomis.games.dsl.GamesImpl
 import net.zomis.games.dsl.impl.GameSetupImpl
 import net.zomis.games.impl.*
 import net.zomis.games.impl.ttt.*
@@ -27,7 +28,7 @@ object ServerGames {
 
     fun setup(gameType: String): GameSetupImpl<Any>? {
         val spec = games[gameType] as GameSpec<Any>? ?: return null
-        return GameSetupImpl(spec)
+        return GamesImpl.game(spec).setup()
     }
 
 }

@@ -77,7 +77,9 @@ const gameStore = {
   },
   actions: {
     action(context, data) {
-      Socket.route(`games/${data.gameInfo.gameType}/${data.gameInfo.gameId}/move`, {
+      let game = context.state.games[data.gameInfo.gameId];
+      Socket.route(`games/${data.gameInfo.gameType}/${data.gameInfo.gameId}/game/move`, {
+        playerIndex: game.gameInfo.yourIndex,
         moveType: data.name,
         move: data.data
       });
@@ -95,7 +97,7 @@ const gameStore = {
         playerIndex: data.gameInfo.yourIndex,
         chosen: gameData.actionChoice.choices
       }
-      Socket.route(`games/${data.gameInfo.gameType}/${data.gameInfo.gameId}/action`, obj);
+      Socket.route(`games/${data.gameInfo.gameType}/${data.gameInfo.gameId}/game/action`, obj);
     },
     performChosenAction(context, data) {
       let game = context.state.games[data.gameInfo.gameId];
@@ -106,10 +108,11 @@ const gameStore = {
         chosen: gameData.actionChoice.choices,
         perform: true
       }
-      Socket.route(`games/${data.gameInfo.gameType}/${data.gameInfo.gameId}/action`, obj);
+      Socket.route(`games/${data.gameInfo.gameType}/${data.gameInfo.gameId}/game/action`, obj);
     },
     requestView(context, data) {
-      Socket.route(`games/${data.gameType}/${data.gameId}/view`, {});
+      let game = context.state.games[data.gameId];
+      Socket.route(`games/${data.gameType}/${data.gameId}/game/view`, { viewer: game.gameInfo.yourIndex });
     },
     resetActionsTo(context, data) {
       context.commit("resetActions", { gameInfo: data.gameInfo });
@@ -120,7 +123,7 @@ const gameStore = {
       context.dispatch("requestActions", { gameInfo: data.gameInfo });
     },
     joinGame(context, data) {
-      Socket.route(`games/${data.gameType}/${data.gameId}/join`, {})
+      Socket.route(`games/${data.gameType}/${data.gameId}/game/join`, {})
     },
     requestActions(context, data) {
       let game = context.state.games[data.gameInfo.gameId];
@@ -135,7 +138,7 @@ const gameStore = {
 
       if (actionChoice && actionChoice.actionName) { obj.moveType = actionChoice.actionName }
 
-      Socket.route(`games/${data.gameInfo.gameType}/${data.gameInfo.gameId}/actionList`, obj);
+      Socket.route(`games/${data.gameInfo.gameType}/${data.gameInfo.gameId}/game/actionList`, obj);
     },
     highlight(context, data) {
       context.commit("setHighlight", data);

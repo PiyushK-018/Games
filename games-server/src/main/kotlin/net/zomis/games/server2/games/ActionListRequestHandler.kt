@@ -3,20 +3,18 @@ package net.zomis.games.server2.games
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import klog.KLoggers
-import net.zomis.games.dsl.impl.ActionInfo
+import net.zomis.games.common.isObserver
+import net.zomis.games.dsl.GameReplayableImpl
 import net.zomis.games.dsl.impl.ActionInfoByKey
-import net.zomis.games.dsl.impl.ActionTypeImplEntry
 import net.zomis.games.dsl.impl.GameImpl
+import net.zomis.games.server.games.ServerGame
 import net.zomis.games.server2.Client
 import net.zomis.games.server2.ClientJsonMessage
-import net.zomis.games.server2.getTextOrDefault
 
 class FrontendActionInfo(val keys: ActionInfoByKey)
-class ActionList(val playerIndex: Int, val game: ServerGame, val actions: FrontendActionInfo)
-class ActionListRequestHandler(private val game: ServerGame?) {
-    private val logger = KLoggers.logger(this)
-    private val mapper = jacksonObjectMapper()
+class ActionList<T: Any>(val playerIndex: Int, val game: ServerGame<T>, val actions: FrontendActionInfo)
 
+object ActionListHelper {
     fun <T: Any> availableActionsMessage(obj: GameImpl<T>, playerIndex: Int, moveType: String?, chosen: List<Any>?): FrontendActionInfo {
         return if (moveType != null) {
             val actionType = obj.actions.type(moveType)!!
@@ -26,29 +24,38 @@ class ActionListRequestHandler(private val game: ServerGame?) {
             FrontendActionInfo(obj.actions.allActionInfo(playerIndex, chosen ?: emptyList()))
         }
     }
+}
+
+class ActionListRequestHandler<T: Any>(val serverGame: ServerGame<T>) {
+    private val logger = KLoggers.logger(this)
+    private val mapper = jacksonObjectMapper()
+
+    fun <T: Any> availableActionsMessage(obj: GameImpl<T>, playerIndex: Int, moveType: String?, chosen: List<Any>?): FrontendActionInfo
+        = ActionListHelper.availableActionsMessage(obj, playerIndex, moveType, chosen)
 
     fun sendActionList(message: ClientJsonMessage) {
         val actionParams = actionParams(message)
         this.sendActionParams(message.client, actionParams)
     }
 
-    private fun sendActionParams(client: Client, actionParams: ActionList) {
+    private fun sendActionParams(client: Client, actionParams: ActionList<T>) {
         val game = actionParams.game
-        logger.info { "Sending action list data for ${game.gameId} of type ${game.gameType.type} to ${actionParams.playerIndex}" }
-        client.send(mapOf(
-            "type" to "ActionList",
-            "gameType" to game.gameType.type,
-            "gameId" to game.gameId,
-            "playerIndex" to actionParams.playerIndex,
-            "actions" to actionParams.actions.keys.keys
-        ))
+        logger.info { "Sending action list data for ${game.gameId} of type ${game.gameTypeName} to ${actionParams.playerIndex}" }
+        client.send(
+            serverGame.gameInfoMessages.message("ActionList")
+                .plus("playerIndex" to actionParams.playerIndex)
+                .plus("actions" to actionParams.actions.keys.keys)
+        )
     }
 
-    private fun actionParams(message: ClientJsonMessage): ActionList {
-        val obj = game!!.obj!!.game
-        val playerIndex = message.data.getTextOrDefault("playerIndex", "-1").toInt()
-        if (!game.verifyPlayerIndex(message.client, playerIndex)) {
-            throw IllegalArgumentException("Client ${message.client} does not have index $playerIndex in Game ${game.gameId} of type ${game.gameType.type}")
+    private fun actionParams(message: ClientJsonMessage): ActionList<T> {
+        val obj = serverGame.replayable!!.game
+        val playerIndex = serverGame.playerManagement.playerIndex(message)
+        if (playerIndex.isObserver()) {
+            throw IllegalArgumentException("Client ${message.client} does not have index $playerIndex in Game ${serverGame.gameId} of type ${serverGame.gameTypeName}")
+        }
+        if (obj.isGameOver()) {
+            return ActionList(playerIndex!!, serverGame, FrontendActionInfo(ActionInfoByKey(emptyMap())))
         }
 
         val moveType = message.data.get("moveType")?.asText()
@@ -56,7 +63,7 @@ class ActionListRequestHandler(private val game: ServerGame?) {
         val chosen = mutableListOf<Any>()
 
         for (choiceJson in chosenJson) {
-            val actionParams = availableActionsMessage(obj, playerIndex, moveType, chosen)
+            val actionParams = availableActionsMessage(obj, playerIndex!!, moveType, chosen)
             val actionInfo = actionParams.keys.keys.values.flatten()
             val nextChosenClazz = actionInfo.filter { !it.isParameter }.map { it.serialized::class }.toSet().let {
                 if (it.size == 1) { it.single() } else throw IllegalStateException("Expected only one class but found $it in $actionInfo")
@@ -71,19 +78,19 @@ class ActionListRequestHandler(private val game: ServerGame?) {
             }
             chosen.add(parameter)
         }
-        return ActionList(playerIndex, game, availableActionsMessage(obj, playerIndex, moveType, chosen))
+        return ActionList(playerIndex!!, serverGame, availableActionsMessage(obj, playerIndex, moveType, chosen))
     }
 
-    fun actionRequest(message: ClientJsonMessage, callback: GameCallback) {
+    fun actionRequest(message: ClientJsonMessage, replayable: GameReplayableImpl<T>) {
         val actionParams = actionParams(message)
         val frontendActionInfo = actionParams.actions.keys.keys.values.flatten()
 
-        val action = if (message.data.has("perform") && message.data["perform"].asBoolean()) frontendActionInfo[0]
+        val actionInfoKey = if (message.data.has("perform") && message.data["perform"].asBoolean()) frontendActionInfo[0]
             else frontendActionInfo.singleOrNull()?.takeIf { it.isParameter }
-        if (action != null) {
-            val actionRequest = PlayerGameMoveRequest(actionParams.game, actionParams.playerIndex,
-                action.actionType, action.serialized, true)
-            callback.moveHandler(actionRequest)
+        if (actionInfoKey != null) {
+            val actionTypeImpl = replayable.game.actions.type(actionInfoKey.actionType)!!
+            val action = actionTypeImpl.createActionFromSerialized(actionParams.playerIndex, actionInfoKey.serialized)
+            replayable.perform(action)
         } else {
             this.sendActionParams(message.client, actionParams)
         }

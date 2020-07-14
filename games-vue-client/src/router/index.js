@@ -138,10 +138,11 @@ export default new Router({
       }
     },
     {
-      path: "/invites/:inviteId/",
+      path: "/invites/:gameType/:inviteId/",
       name: "InviteScreen",
       component: InviteScreen,
       props: route => ({
+        gameType: route.params.gameType,
         inviteId: route.params.inviteId
       })
     },

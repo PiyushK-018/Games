@@ -18,6 +18,7 @@ open class GameplayCallbacks<T : Any> {
     open fun onMove(actionIndex: Int, action: Actionable<T, Any>, actionReplay: ActionReplay) {/* empty by default */}
     open fun onElimination(elimination: PlayerElimination) {/* empty by default */}
     open fun onLog(log: List<ActionLogEntry>) {/* empty by default */}
+    open fun onGameOver() {/* empty by default */}
 }
 data class ActionReplay(val actionType: String, val playerIndex: Int, val serializedParameter: Any, val state: GameSituationState)
 data class ReplayData(
@@ -34,7 +35,7 @@ class GameReplayableImpl<T : Any>(
     options: Any? = null,
     val gameplayCallbacks: GameplayCallbacks<T>
 ) {
-
+    val gameTypeName = gameSpec.name
     val setup = GameSetupImpl(gameSpec)
     val state = StateKeeper().also { stateKeeper ->
         var curr: GameSituationState = null
@@ -84,7 +85,8 @@ class GameReplayableImpl<T : Any>(
             if (it != null) state.setState(it)
         }
         val eliminatedBefore = game.eliminationCallback.eliminations()
-        val actionImpl = game.actions.type(action.actionType)!!
+        val actionImpl = game.actions.type(action.actionType) ?: throw IllegalArgumentException("Action type ${action.actionType} does not exist in game $gameTypeName")
+        if (!actionImpl.isAllowed(action)) throw IllegalStateException("Action is not allowed: $action")
         actionImpl.perform(action)
 
         // Collect state and logs. Perform callbacks.
@@ -95,6 +97,10 @@ class GameReplayableImpl<T : Any>(
         gameplayCallbacks.onLog(game.stateKeeper.logs())
         val newlyEliminated = game.eliminationCallback.eliminations() - eliminatedBefore
         newlyEliminated.forEach { gameplayCallbacks.onElimination(it) }
+
+        if (this.game.isGameOver()) {
+            gameplayCallbacks.onGameOver()
+        }
 
         this.actionIndex++
     }

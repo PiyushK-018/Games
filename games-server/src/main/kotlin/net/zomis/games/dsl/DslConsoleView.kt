@@ -4,6 +4,7 @@ import net.zomis.common.convertToDBFormat
 import net.zomis.games.common.Point
 import net.zomis.games.dsl.impl.*
 import net.zomis.games.server2.ServerGames
+import net.zomis.games.server2.games.ActionListHelper
 import net.zomis.games.server2.games.ActionListRequestHandler
 import java.util.Scanner
 
@@ -71,11 +72,9 @@ class DslConsoleView<T : Any>(private val game: GameSpec<T>) {
     }
 
     private fun stepByStepActionable(game: GameImpl<T>, playerIndex: Int, moveType: String, scanner: Scanner): Actionable<T, Any>? {
-        val reqHandler = ActionListRequestHandler(null)
-
         val chosen = mutableListOf<Any>()
         while (true) {
-            val act = reqHandler.availableActionsMessage(game, playerIndex, moveType, chosen).keys.keys
+            val act = ActionListHelper.availableActionsMessage(game, playerIndex, moveType, chosen).keys.keys
 
             println("  " + act.size + " choices")
             val entryList = act.entries.toList()

@@ -1,19 +1,19 @@
 package net.zomis.games.server2.ais
 
 import net.zomis.core.events.EventSystem
+import net.zomis.games.dsl.Actionable
 import net.zomis.games.dsl.impl.GameImpl
 import net.zomis.games.scorers.ScorerController
-import net.zomis.games.server2.games.PlayerGameMoveRequest
-import net.zomis.games.server2.games.ServerGame
+import net.zomis.games.server.games.ServerGame
 
-typealias ServerGameAI = (game: ServerGame, playerIndex: Int) -> PlayerGameMoveRequest?
+typealias ServerGameAI<T> = (game: ServerGame<T>, playerIndex: Int) -> Actionable<T, Any>?
 
 class AIRepository {
 
     private class AIRepositoryForGame<T: Any> {
         val scoringAIs = mutableMapOf<String, ScorerController<T>>()
         val alphaBetaAIs = mutableMapOf<String, AlphaBetaAIFactory<T>>()
-        val otherAIs = mutableMapOf<String, ServerGameAI>()
+        val otherAIs = mutableMapOf<String, ServerGameAI<T>>()
     }
     private val gameTypeAIs = mutableMapOf<String, AIRepositoryForGame<Any>>()
 

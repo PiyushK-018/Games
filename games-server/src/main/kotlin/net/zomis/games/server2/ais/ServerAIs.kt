@@ -4,9 +4,7 @@ import klog.KLoggers
 import net.zomis.core.events.EventSystem
 import net.zomis.games.dsl.Actionable
 import net.zomis.games.dsl.impl.GameImpl
-import net.zomis.games.server2.games.GameTypeRegisterEvent
-import net.zomis.games.server2.games.PlayerGameMoveRequest
-import net.zomis.games.server2.games.ServerGame
+import net.zomis.games.server.games.ServerGame
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 
@@ -26,29 +24,30 @@ class ServerAIs(private val aiRepository: AIRepository, private val dslGameTypes
         return actions.random()
     }
 
-    fun randomAction(game: ServerGame, index: Int): PlayerGameMoveRequest? {
-        val controller = game.obj!!.game
+    fun <T: Any> randomAction(game: ServerGame<T>, index: Int): Actionable<T, Any>? {
+        val controller = game.replayable!!.game
         val actionable = randomActionable(controller, index)
-        return actionable?.let {
-            PlayerGameMoveRequest(game, it.playerIndex, it.actionType, it.parameter, false)
-        }
+        return actionable
     }
 
     fun register(events: EventSystem, executor: ScheduledExecutorService) {
         events.listen("ServerAIs Delayed move", DelayedAIMoves::class, {true}, {
             executor.schedule({
                 try {
-                    events.execute(it.move)
+                    val param = it as DelayedAIMoves<Any>
+                    param.game.actions.perform(param.action)
                 } catch (e: Exception) {
                     logger.error(e, "Unable to call AI")
                 }
             }, 1000, TimeUnit.MILLISECONDS)
         })
+        /*
         events.listen("register AI Random for DSL Game", GameTypeRegisterEvent::class, { isDSLGameType(it.gameType) }, {event ->
             ServerAI(event.gameType, "#AI_Random_" + event.gameType) { game, index ->
                 return@ServerAI randomAction(game, index)
             }.register(events)
         })
+        */
         ServerAlphaBetaAIs(aiRepository).setup(events)
         ServerScoringAIs(aiRepository).setup(events)
     }

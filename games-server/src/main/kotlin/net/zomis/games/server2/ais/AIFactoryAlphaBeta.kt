@@ -9,7 +9,6 @@ import net.zomis.games.ais.AlphaBeta
 import net.zomis.games.ais.noAvailableActions
 import net.zomis.games.dsl.Actionable
 import net.zomis.games.dsl.impl.GameImpl
-import net.zomis.games.server2.games.PlayerGameMoveRequest
 
 data class AIAlphaBetaConfig<T: Any>(val factory: AlphaBetaAIFactory<T>, val level: Int, val speedMode: AlphaBetaSpeedMode) {
 
@@ -65,10 +64,10 @@ class AIFactoryAlphaBeta {
 
     private val logger = KLoggers.logger(this)
 
-    fun <S: Any> createAlphaBetaAI(factory: AlphaBetaAIFactory<S>, events: EventSystem, depth: Int, speedMode: AlphaBetaSpeedMode) {
+    fun <T: Any> createAlphaBetaAI(factory: AlphaBetaAIFactory<T>, events: EventSystem, depth: Int, speedMode: AlphaBetaSpeedMode) {
         val alphaBetaConfig = AIAlphaBetaConfig(factory, depth, speedMode)
-        ServerAI(factory.gameType, factory.aiName(depth, speedMode)) { game, index ->
-            val model = game.obj!!.game as GameImpl<S>
+        ServerAI<T>(factory.gameType, factory.aiName(depth, speedMode)) { game, index ->
+            val model = game.replayable!!.game
             if (noAvailableActions(model, index)) {
                 return@ServerAI null
             }
@@ -77,7 +76,7 @@ class AIFactoryAlphaBeta {
 
             val options = alphaBetaConfig.evaluateActions(model, index)
             val move = options.bestBy { it.second }.random()
-            return@ServerAI PlayerGameMoveRequest(game, index, move.first.actionType, move.first.parameter, false)
+            return@ServerAI move.first
         }.register(events)
     }
 

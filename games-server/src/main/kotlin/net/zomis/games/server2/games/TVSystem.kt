@@ -3,23 +3,20 @@ package net.zomis.games.server2.games
 import klog.KLoggers
 import net.zomis.core.events.EventSystem
 import net.zomis.games.Features
+import net.zomis.games.server.games.ClientList
 import net.zomis.games.server2.Client
 import net.zomis.games.server2.ClientJsonMessage
 import net.zomis.games.server2.StartupEvent
-import net.zomis.games.server2.debug.AIGames
-import net.zomis.games.server2.debug.isAI
 import net.zomis.games.server2.getTextOrDefault
-import net.zomis.games.server2.invites.ClientList
-import net.zomis.games.server2.invites.lobbyOptions
 import java.util.Random
 
-data class TVData(val viewers: MutableMap<Client, ServerGame>)
+//data class TVData(val viewers: MutableMap<Client, ServerGame>)
 // TVData needs to have multiple games depending on viewers' preferences
 
 //data class TVClientData(val games)
 
-val Features.tvData: TVData get() = this[TVData::class]!!
-
+//val Features.tvData: TVData get() = this[TVData::class]!!
+/*
 class TVSystem(private val gameClients: GameTypeMap<ClientList>) {
 
     private val logger = KLoggers.logger(this)
@@ -110,3 +107,4 @@ class TVSystem(private val gameClients: GameTypeMap<ClientList>) {
     }
 
 }
+*/

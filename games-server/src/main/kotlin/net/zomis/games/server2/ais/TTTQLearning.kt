@@ -12,10 +12,10 @@ import net.zomis.games.common.PlayerIndex
 import net.zomis.games.common.Point
 import net.zomis.games.dsl.impl.GameImpl
 import net.zomis.games.impl.ttt.index
-import net.zomis.games.server2.games.*
 import net.zomis.tttultimate.TTPlayer
 import net.zomis.tttultimate.games.TTController
 
+/*
 class TTTQLearn(val games: GameSystem) {
     val gameType = "DSL-TTT"
 
@@ -165,7 +165,7 @@ class TTTQLearn(val games: GameSystem) {
                 return@let PlayerGameMoveRequest(game, index, it.first, it.second.parameter)
             }
             listOf(chosenAction)
-            */
+            *  x/
         }
         serverAI.register(events)
         events.listen("#AI_QLearn_$gameType pre-move", PreMoveEvent::class, {
@@ -203,3 +203,4 @@ class TTTQLearn(val games: GameSystem) {
     }
 
 }
+*/

@@ -6,7 +6,7 @@ import net.zomis.games.server2.ClientJsonMessage
 import net.zomis.games.server2.getTextOrDefault
 
 class GameListSystem {
-
+/*
     fun setup(features: Features, events: EventSystem) {
         val gameTypes = features[GameSystem.GameTypes::class]!!.gameTypes
         // When receiving { type: "GameList" }
@@ -28,5 +28,5 @@ class GameListSystem {
             event.client.send(mapOf("type" to "GameList", "list" to list))
         })
     }
-
+*/
 }

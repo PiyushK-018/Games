@@ -2,8 +2,6 @@ package net.zomis.games.server2
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import klog.KLoggers
-import net.zomis.games.Features
-import net.zomis.games.server2.invites.ClientInterestingGames
 import org.apache.commons.codec.digest.DigestUtils
 import java.util.UUID
 
@@ -25,7 +23,6 @@ open class Client {
     var name: String? = null
     var playerId: PlayerId? = null
     var picture: String? = null
-    var interestingGames = ClientInterestingGames(emptySet(), 0, mutableSetOf())
 
     fun connected() {}
 

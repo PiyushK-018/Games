@@ -63,7 +63,7 @@ const lobbyStore = {
   },
   actions: {
     inviteView(context, data) {
-      Socket.route(`invites/${data.inviteId}/view`, {})
+      Socket.route(`games/${data.gameType}/${data.inviteId}/invite/view`, {})
     },
     joinAndList() {
       Socket.route(`lobby/join`, { gameTypes: supportedGames.enabledGameKeys(), maxGames: 1 })
@@ -71,12 +71,8 @@ const lobbyStore = {
     },
 
     cancelInvite(context) {
-      let inviteId = context.state.inviteWaiting.inviteId
-      Socket.route(`invites/${inviteId}/cancel`, {});
-    },
-    createServerInvite(context) {
-      console.log("Create Server Invite");
-      Socket.route("invites/start", { gameType: context.state.inviteWaiting.gameType });
+      let inviteWaiting = context.state.inviteWaiting
+      Socket.route(`games/${inviteWaiting.gameType}/${inviteWaiting.inviteId}/invite/cancel`, {});
     },
     onSocketMessage(context, data) {
       if (data.type == "Lobby") {
@@ -102,7 +98,7 @@ const lobbyStore = {
         if (!existingInvite) {
           router.push({
             name: "InviteScreen",
-            params: { inviteId: data.inviteId }
+            params: { gameType: data.gameType, inviteId: data.inviteId }
           });
         }
       }

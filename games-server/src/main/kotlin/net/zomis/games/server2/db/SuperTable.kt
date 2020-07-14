@@ -12,12 +12,13 @@ import net.zomis.common.convertToDBFormat
 import net.zomis.core.events.EventSystem
 import net.zomis.core.events.ListenerPriority
 import net.zomis.games.Features
+import net.zomis.games.dsl.Actionable
 import net.zomis.games.dsl.GameSpec
 import net.zomis.games.dsl.impl.GameImpl
 import net.zomis.games.dsl.impl.GameSetupImpl
+import net.zomis.games.server.games.ServerGame
 import net.zomis.games.server2.*
 import net.zomis.games.server2.ais.ServerAIProvider
-import net.zomis.games.server2.games.*
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -32,8 +33,8 @@ class SuperTable(private val dynamoDB: AmazonDynamoDB) {
 
     private val logger = KLoggers.logger(this)
 
-    private fun dbEnabled(game: ServerGame): Boolean {
-        return game.gameMeta.database
+    private fun <T: Any> dbEnabled(game: ServerGame<T>): Boolean {
+        return game.inviteOptions.database
     }
 
     fun setup(features: Features, events: EventSystem): List<CreateTableRequest> {
@@ -43,18 +44,18 @@ class SuperTable(private val dynamoDB: AmazonDynamoDB) {
         events.listen("Load unfinished games", StartupEvent::class, {true}, {
             features.addData(UnfinishedGames(this.listUnfinished().toMutableSet()))
         })
-        events.listen("save game in Database", ListenerPriority.LATER, GameStartedEvent::class, { dbEnabled(it.game) }, {
-            event -> this.createGame(event.game)
-        })
-        events.listen("save game move in Database", MoveEvent::class, { dbEnabled(it.game) }, {event ->
-            this.addMove(event)
-        })
-        events.listen("finish game in Database", GameEndedEvent::class, { dbEnabled(it.game) }, { event ->
-            this.finishGame(event.game)
-        })
-        events.listen("eliminate player in Database", PlayerEliminatedEvent::class, { dbEnabled(it.game) }, {event ->
-            this.playerEliminated(event)
-        })
+//        events.listen("save game in Database", ListenerPriority.LATER, GameStartedEvent::class, { dbEnabled(it.game) }, {
+//            event -> this.createGame(event.game)
+//        })
+//        events.listen("save game move in Database", MoveEvent::class, { dbEnabled(it.game) }, {event ->
+//            this.addMove(event)
+//        })
+//        events.listen("finish game in Database", GameEndedEvent::class, { dbEnabled(it.game) }, { event ->
+//            this.finishGame(event.game)
+//        })
+//        events.listen("eliminate player in Database", PlayerEliminatedEvent::class, { dbEnabled(it.game) }, {event ->
+//            this.playerEliminated(event)
+//        })
         return listOf(this.table).map { it.createTableRequest() }
     }
 
@@ -107,17 +108,17 @@ class SuperTable(private val dynamoDB: AmazonDynamoDB) {
         ;
     }
 
-    fun createGame(game: ServerGame) {
+    fun <T: Any> createGame(game: ServerGame<T>) {
         val pkValue = Prefix.GAME.sk(game.gameId)
 
         // Don't use data here because PK and SK is the same, this doesn't need to be in GSI-1
         val state: Any? = gameRandomnessState(game)
         var updates = listOf(
-            AttributeUpdate(Fields.GAME_TYPE.fieldName).put(game.gameType.type),
+            AttributeUpdate(Fields.GAME_TYPE.fieldName).put(game.gameTypeName),
             AttributeUpdate(Fields.GAME_TIME_STARTED.fieldName).put(Instant.now().epochSecond)
         )
-        if (game.gameMeta.gameOptions != game.gameSetup().getDefaultConfig()) {
-            updates = updates.plus(AttributeUpdate(Fields.GAME_OPTIONS.fieldName).put(convertToDBFormat(game.gameMeta.gameOptions ?: Unit)))
+        if (game.inviteOptions.gameOptions != game.entryPoint.setup().getDefaultConfig()) {
+            updates = updates.plus(AttributeUpdate(Fields.GAME_OPTIONS.fieldName).put(convertToDBFormat(game.inviteOptions.gameOptions ?: Unit)))
         }
         if (state != null) {
             updates = updates.plus(AttributeUpdate(Fields.MOVE_STATE.fieldName).put(state))
@@ -134,8 +135,8 @@ class SuperTable(private val dynamoDB: AmazonDynamoDB) {
 //        )
 
         // Add players in game
-        val playerIds = game.players
-            .map { it.playerId ?: throw IllegalStateException("Missing playerId for ${it.name}") }
+        val playerIds = game.playerManagement.playersInGame
+            .map { it.client.playerId ?: throw IllegalStateException("Missing playerId for ${it.client.name}") }
         val players = playerIds.withIndex().groupBy({ it.value }) { it.index }
         players.forEach { (playerId, indexes) ->
             this.simpleUpdate(pkValue, Prefix.PLAYER.sk(playerId.toString()), epochMilli,
@@ -147,22 +148,21 @@ class SuperTable(private val dynamoDB: AmazonDynamoDB) {
         }
     }
 
-    fun addMove(move: MoveEvent) {
+    fun <T: Any> addMove(serverGame: ServerGame<T>, action: Actionable<T, Any>) {
         val epochMilli = Instant.now().toEpochMilli()
-        val serverGame = move.game
-        move.game.lastMove = epochMilli
-        val moveIndex = serverGame.nextMoveIndex()
+        serverGame.actions.lastMove = epochMilli
+        val moveIndex = serverGame.actions.nextMoveIndex()
 
-        val gameImpl = serverGame.obj!!.game
-        val actionType = gameImpl.actions.type(move.moveType)!!.actionType
-        val dbMove = actionType.serialize(move.move)
+        val gameImpl = serverGame.replayable!!.game
+        val actionType = gameImpl.actions.type(action.actionType)!!.actionType
+        val dbMove = actionType.serialize(action.parameter)
 
         val moveData = convertToDBFormat(dbMove)
         val state: Any? = gameRandomnessState(serverGame)
         val updates = mutableListOf(
             AttributeUpdate(Fields.MOVE_TIME.fieldName).put(epochMilli),
-            AttributeUpdate(Fields.MOVE_PLAYER_INDEX.fieldName).put(move.player),
-            AttributeUpdate(Fields.MOVE_TYPE.fieldName).put(move.moveType)
+            AttributeUpdate(Fields.MOVE_PLAYER_INDEX.fieldName).put(action.playerIndex),
+            AttributeUpdate(Fields.MOVE_TYPE.fieldName).put(action.actionType)
         )
         if (moveData != null) {
             updates += AttributeUpdate(Fields.MOVE.fieldName).put(moveData)
@@ -173,11 +173,11 @@ class SuperTable(private val dynamoDB: AmazonDynamoDB) {
 
         val update = UpdateItemSpec().withPrimaryKey(this.pk, Prefix.GAME.sk(serverGame.gameId),
             this.sk, Prefix.ZMOVE.sk(moveIndex.toString())).withAttributeUpdate(updates)
-        this.update("Add Move $move", update)
+        this.update("Add Move $action in game $serverGame", update)
     }
 
-    private fun gameRandomnessState(serverGame: ServerGame): Any? {
-        val game = serverGame.obj!!.game as GameImpl<*>
+    private fun <T: Any> gameRandomnessState(serverGame: ServerGame<T>): Any? {
+        val game = serverGame.replayable!!.game as GameImpl<*>
         val lastMoveState = game.stateKeeper.lastMoveState()
         if (lastMoveState.isNotEmpty()) {
             return convertToDBFormat(lastMoveState)
@@ -190,7 +190,7 @@ class SuperTable(private val dynamoDB: AmazonDynamoDB) {
             table.table.updateItem(update.withReturnConsumedCapacity(ReturnConsumedCapacity.INDEXES))
         })
     }
-
+/*
     fun playerEliminated(event: PlayerEliminatedEvent) {
         val pkValue = Prefix.GAME.sk(event.game.gameId)
 
@@ -211,7 +211,7 @@ class SuperTable(private val dynamoDB: AmazonDynamoDB) {
         }
         this.simpleUpdate(pkValue, SK_PUSH_TO_STATS, Instant.now().toEpochMilli())
     }
-
+*/
     fun <T : Any> logCapacity(description: String, capacity: (T) -> ConsumedCapacity?, function: () -> T): T {
         val startTime = System.nanoTime()
         val result = function()

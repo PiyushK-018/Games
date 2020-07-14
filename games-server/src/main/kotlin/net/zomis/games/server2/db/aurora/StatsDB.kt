@@ -7,12 +7,8 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import klog.KLoggers
 import net.zomis.games.server2.db.*
-import net.zomis.games.server2.games.GameCallback
-import net.zomis.games.server2.games.GameSystem
-import net.zomis.games.server2.invites.ClientList
 import java.time.Instant
 import java.util.UUID
-import kotlin.math.max
 
 data class StatsPlayerInGame(val playerId: String, val result: Double, val resultPosition: Int)
 data class StatsTag(val tagId: String, val tagParameter: Long)

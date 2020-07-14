@@ -6,7 +6,6 @@ import net.zomis.games.dsl.impl.GameImpl
 import net.zomis.games.impl.TTQuixoController
 import net.zomis.games.impl.ttt.TTT3D
 import net.zomis.games.impl.ttt.TTT3DPiece
-import net.zomis.games.server2.games.GameTypeRegisterEvent
 import net.zomis.games.server2.games.impl.TTConnect4AlphaBeta
 import net.zomis.games.server2.games.impl.toWinResult
 import net.zomis.tttultimate.TTBase
@@ -124,7 +123,7 @@ class ServerAlphaBetaAIs(private val aiRepository: AIRepository) {
             AlphaBetaAIFactory(quixoAB,"Quixo", "AlphaBeta", 3, false, model(::heuristicQuixo)),
             AlphaBetaAIFactory(tt3Dab, "DSL-TTT3D", "AlphaBeta", 5, true, model(::heuristicTTT3D))
         )
-
+/*
         events.listen("register AlphaBeta for TTController-games", GameTypeRegisterEvent::class, { event ->
             aiFactories.any { it.gameType == event.gameType }
         }, {event ->
@@ -132,5 +131,6 @@ class ServerAlphaBetaAIs(private val aiRepository: AIRepository) {
                 aiRepository.createAlphaBetaAIs(events, factory)
             }
         })
+        */
     }
 }

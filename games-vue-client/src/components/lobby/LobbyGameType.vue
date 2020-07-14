@@ -47,10 +47,10 @@ export default {
     props: ["gameType", "users", "yourPlayer"],
     methods: {
         createInvite(gameType) {
-            Socket.route("invites/prepare", { gameType: gameType })
+            Socket.route(`games/${gameType}/invites/prepare`, { })
         },
         invite(gameType, playerId) {
-            Socket.route("invites/invite", { gameType: gameType, invite: [playerId] });
+            Socket.route(`games/${gameType}/invites/invite`, { invite: [playerId] });
         }
     },
     computed: {
