@@ -21,8 +21,6 @@ class AIRepository {
     fun <T: Any> createScoringAI(events: EventSystem, factory: ScorerController<T>) {
         val repo = repositoryForGameType<T>(factory.gameType)
         repo.scoringAIs[factory.playerName] = factory
-//        val scoringFactory = AIFactoryScoring()
-//        scoringFactory.createAI(events, factory.gameType, factory.name, factory.createController())
     }
 
     fun <T: Any> createAlphaBetaAIs(events: EventSystem, factory: AlphaBetaAIFactory<T>) {

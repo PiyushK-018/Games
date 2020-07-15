@@ -7,15 +7,12 @@ import net.zomis.games.ais.*
 import net.zomis.games.dsl.*
 import net.zomis.games.dsl.impl.GameImpl
 import net.zomis.games.server.ServerGamesSystem
-import net.zomis.games.server.games.ServerGame
 import net.zomis.games.server2.ClientConnected
 import net.zomis.games.server2.ClientJsonMessage
 import net.zomis.games.server2.ClientLoginEvent
 import net.zomis.games.server2.ShutdownEvent
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
 
 class ServerAIs(private val dslGameTypes: Collection<GameSpec<out Any>>) {
     private val logger = KLoggers.logger(this)
@@ -32,11 +29,10 @@ class ServerAIs(private val dslGameTypes: Collection<GameSpec<out Any>>) {
     }
 
     fun ais(): List<AIFactory<out Any>> {
-//        ServerAlphaBetaAIs(aiRepository).setup(events)
-//        ServerScoringAIs(aiRepository).setup(events)
         return dslGameTypes.map {gameSpec ->
             AIFactorySimple<Any>(gameSpec.name, "#AI_Random") { randomActionable(it.game, it.playerIndex) }
         }.plus(ServerAlphaBetaAIs().ais())
+            .plus(ServerScoringAIs().ais())
     }
 
     fun aiClient(name: String, gameTypes: List<String>, events: EventSystem): AIClient {

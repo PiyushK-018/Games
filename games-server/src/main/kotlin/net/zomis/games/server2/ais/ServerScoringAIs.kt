@@ -1,11 +1,11 @@
 package net.zomis.games.server2.ais
 
-import net.zomis.core.events.EventSystem
+import net.zomis.games.ais.AIFactory
 import net.zomis.games.server2.ais.gamescorers.*
 
-class ServerScoringAIs(private val aiRepository: AIRepository) {
-    fun setup(events: EventSystem) {
-        listOf(
+class ServerScoringAIs {
+    fun ais(): List<AIFactory<out Any>> {
+        return listOf(
             SplendorScorers.ais(),
             AvalonScorers.ais(),
             DungeonMayhemScorers.ais(), SkullScorers.ais(),
@@ -13,13 +13,7 @@ class ServerScoringAIs(private val aiRepository: AIRepository) {
             ArtaxScorers.ais(),
             LiarsDiceScorer.ais(),
             HanabiScorers.ais()
-        ).flatten().groupBy { it.gameType }.forEach { entry ->
-//            events.listen("Register scoring AIs in ${entry.key}", GameTypeRegisterEvent::class, { it.gameType == entry.key }) {
-//                entry.value.forEach {factory ->
-//                    aiRepository.createScoringAI(events, factory)
-//                }
-//            }
-        }
+        ).flatten()
     }
 
 }
