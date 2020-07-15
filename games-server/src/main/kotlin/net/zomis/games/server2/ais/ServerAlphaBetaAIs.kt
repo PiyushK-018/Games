@@ -30,7 +30,7 @@ data class AlphaBetaAIFactory<S: Any>(
     val heuristic: (GameImpl<S>, Int) -> Double
 ) {
     fun aiName(level: Int, speedMode: AlphaBetaSpeedMode)
-        = "#AI_${this.namePrefix}_" + this.gameType + "_" + level + speedMode.nameSuffix
+        = "#AI_${this.namePrefix}_" + level + speedMode.nameSuffix
 
     fun alphaBetaConfigurations(): List<Pair<Int, AlphaBetaSpeedMode>> {
         return (0 until this.maxLevel).map {level ->
