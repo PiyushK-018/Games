@@ -2,10 +2,7 @@ package net.zomis.games.dsl.impl
 
 import net.zomis.games.PlayerEliminations
 import net.zomis.games.common.PlayerIndex
-import net.zomis.games.dsl.Actionable
-import net.zomis.games.dsl.GameFactoryScope
-import net.zomis.games.dsl.GameSpec
-import net.zomis.games.dsl.Viewable
+import net.zomis.games.dsl.*
 import kotlin.reflect.KClass
 
 class GameControllerContext<T : Any>(
@@ -19,7 +16,6 @@ interface GameControllerScope<T : Any> {
     val model: T
     val playerIndex: Int
 }
-typealias GameController<T> = (GameControllerScope<T>) -> Actionable<T, Any>?
 
 class GameSetupImpl<T : Any>(gameSpec: GameSpec<T>) {
 

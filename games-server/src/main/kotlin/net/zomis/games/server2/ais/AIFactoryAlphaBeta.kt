@@ -66,18 +66,18 @@ class AIFactoryAlphaBeta {
 
     fun <T: Any> createAlphaBetaAI(factory: AlphaBetaAIFactory<T>, events: EventSystem, depth: Int, speedMode: AlphaBetaSpeedMode) {
         val alphaBetaConfig = AIAlphaBetaConfig(factory, depth, speedMode)
-        ServerAI<T>(factory.gameType, factory.aiName(depth, speedMode)) { game, index ->
-            val model = game.replayable!!.game
-            if (noAvailableActions(model, index)) {
-                return@ServerAI null
-            }
-
-            logger.info { "Evaluating AlphaBeta options for ${factory.gameType} $depth" }
-
-            val options = alphaBetaConfig.evaluateActions(model, index)
-            val move = options.bestBy { it.second }.random()
-            return@ServerAI move.first
-        }.register(events)
+//        ServerAI<T>(factory.gameType, factory.aiName(depth, speedMode)) { game, index ->
+//            val model = game.replayable!!.game
+//            if (noAvailableActions(model, index)) {
+//                return@ServerAI null
+//            }
+//
+//            logger.info { "Evaluating AlphaBeta options for ${factory.gameType} $depth" }
+//
+//            val options = alphaBetaConfig.evaluateActions(model, index)
+//            val move = options.bestBy { it.second }.random()
+//            return@ServerAI move.first
+//        }.register(events)
     }
 
 }

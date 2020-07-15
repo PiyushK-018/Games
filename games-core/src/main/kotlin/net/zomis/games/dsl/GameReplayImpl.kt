@@ -1,6 +1,7 @@
 package net.zomis.games.dsl
 
 import net.zomis.games.PlayerElimination
+import net.zomis.games.ais.GameController
 import net.zomis.games.dsl.impl.*
 
 /*

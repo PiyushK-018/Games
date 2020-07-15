@@ -6,6 +6,7 @@ import net.zomis.games.dsl.GameplayCallbacks
 import net.zomis.games.server.IdHandler
 import net.zomis.games.server2.Client
 import net.zomis.games.server2.MessageRouter
+import net.zomis.games.server2.ais.ServerAI
 import net.zomis.games.server2.invites.InviteOptions
 
 typealias GameIdGenerator = () -> String
@@ -34,10 +35,15 @@ class ServerGameType<T : Any>(
     override val idHandler: IdHandler<ServerGameWrapper<T>> = IdHandler()
     override val clients: ClientList get() = lobby.clients
 
-    private val ais = mutableMapOf<String, ServerGameAIFactory>()
+    private val ais = mutableMapOf<String, ServerAI<T>>()
 
     fun clientDisconnected(client: Client) {
         lobby.removeClient(client)
+    }
+
+    fun addAI(ai: ServerAI<T>) {
+        if (ais[ai.name] != null) throw IllegalStateException("Cannot add AI twice: ${ai.name} to game $gameTypeName")
+        ais[ai.name] = ai
     }
 
     override fun remove(key: String) = idHandler.remove(key)
@@ -81,7 +87,12 @@ class ServerGameType<T : Any>(
 
     // TODO: Add callbacks and game loaders
     override val gameplayCallbacks: (ServerGame<T>) -> List<GameplayCallbacks<Any>>
-        get() = { emptyList() }
+        get() = { serverGame ->
+            val aisInGame = this.ais.values.filter { ai ->
+                serverGame.playerManagement.playersInGame.any { it.client == ai.client }
+            }
+            aisInGame.map { it.createListener(serverGame) as GameplayCallbacks<Any> }
+        }
 
     override val gameLoaders: List<ServerGameLoader<T>>
         get() = listOf()

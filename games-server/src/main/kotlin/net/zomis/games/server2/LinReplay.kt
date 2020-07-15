@@ -10,7 +10,7 @@ import net.zomis.games.server2.db.DBGame
 import net.zomis.games.server2.db.DBIntegration
 import java.util.concurrent.TimeUnit
 
-class LinReplay(private val aiRepository: AIRepository, private val dbIntegration: DBIntegration) {
+class LinReplay(private val dbIntegration: DBIntegration) {
 
     private val caffeine = Caffeine.newBuilder()
         .maximumSize(10_000)
@@ -32,7 +32,7 @@ class LinReplay(private val aiRepository: AIRepository, private val dbIntegratio
                 val gameId = ctx.pathParam("gameid")
                 log(ctx, "get queryable AIs for $gameId")
                 val dbGame = caffeine.get(gameId)!!
-                ctx.json(aiRepository.queryableAIs(dbGame.summary.gameType))
+//                ctx.json(aiRepository.queryableAIs(dbGame.summary.gameType))
                 // Get queryable AIs
             }
             get("/games/:gameid/analyze/:ai/:position/:playerindex") {ctx ->
@@ -44,7 +44,7 @@ class LinReplay(private val aiRepository: AIRepository, private val dbIntegratio
                 log(ctx, "analyze $gameId $position using $ai")
                 val dbGame = if (ignoreCache) fetchGame(gameId) else caffeine.get(gameId)!!
                 val game = dbGame.at(position)
-                ctx.json(aiRepository.analyze(dbGame.summary.gameType, game, ai, playerIndex)!!)
+//                ctx.json(aiRepository.analyze(dbGame.summary.gameType, game, ai, playerIndex)!!)
             }
         }
     }

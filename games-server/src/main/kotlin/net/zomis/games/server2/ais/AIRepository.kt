@@ -6,14 +6,12 @@ import net.zomis.games.dsl.impl.GameImpl
 import net.zomis.games.scorers.ScorerController
 import net.zomis.games.server.games.ServerGame
 
-typealias ServerGameAI<T> = (game: ServerGame<T>, playerIndex: Int) -> Actionable<T, Any>?
-
 class AIRepository {
 
     private class AIRepositoryForGame<T: Any> {
         val scoringAIs = mutableMapOf<String, ScorerController<T>>()
         val alphaBetaAIs = mutableMapOf<String, AlphaBetaAIFactory<T>>()
-        val otherAIs = mutableMapOf<String, ServerGameAI<T>>()
+//        val otherAIs = mutableMapOf<String, ServerGameAI<T>>()
     }
     private val gameTypeAIs = mutableMapOf<String, AIRepositoryForGame<Any>>()
 
@@ -24,9 +22,9 @@ class AIRepository {
 
     fun <T: Any> createScoringAI(events: EventSystem, factory: ScorerController<T>) {
         val repo = repositoryForGameType<T>(factory.gameType)
-        repo.scoringAIs[factory.name] = factory
-        val scoringFactory = AIFactoryScoring()
-        scoringFactory.createAI(events, factory.gameType, factory.name, factory.createController())
+        repo.scoringAIs[factory.playerName] = factory
+//        val scoringFactory = AIFactoryScoring()
+//        scoringFactory.createAI(events, factory.gameType, factory.name, factory.createController())
     }
 
     private fun <T: Any> alphaBetaConfigurations(factory: AlphaBetaAIFactory<T>): List<Pair<Int, AlphaBetaSpeedMode>> {

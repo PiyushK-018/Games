@@ -1,12 +1,11 @@
 package net.zomis.games.scorers
 
 import net.zomis.bestBy
-import net.zomis.games.ais.noAvailableActions
+import net.zomis.games.ais.*
 import net.zomis.games.dsl.Actionable
-import net.zomis.games.dsl.impl.GameController
 import net.zomis.games.dsl.impl.GameControllerScope
 
-class ScorerController<T : Any>(val gameType: String, val name: String, vararg configArr: Scorer<T, Any>) {
+class ScorerController<T : Any>(override val gameType: String, override val playerName: String, vararg configArr: Scorer<T, Any>): AIFactory<T> {
     val config = configArr.toList()
 
     fun availableActions(scope: GameControllerScope<T>): List<Actionable<T, Any>> {
@@ -38,7 +37,7 @@ class ScorerController<T : Any>(val gameType: String, val name: String, vararg c
         return scoreSelected(scope.model, scope.playerIndex, availableActions)
     }
 
-    fun createController(): GameController<T> = {scope ->
+    override fun createController(): GameListeningController<T> = GameIndependentController { scope ->
         if (config.isEmpty()) {
             throw IllegalArgumentException("All controllers must have at least one scorer (even if it just returns zero for everything)")
         }

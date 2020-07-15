@@ -38,7 +38,7 @@ class ServerGameWrapper<T : Any>(val callback: ServerGameWrapperCallback<T>, val
     override fun startGame(invite: ServerGameInvite<T>) {
         logger.info { "Starting game for invite $invite" }
         val game = ServerGame(callback, entryPoint, id, invite.inviteOptions)
-        game.playerManagement.addPlayers(invite.clients().map { ServerGamePlayer(it) })
+        game.playerManagement.addPlayers(invite.clients().map { ServerGamePlayer<T>(it) })
         this.game = game
         this.invite = null
         game.gameFirstStarted()

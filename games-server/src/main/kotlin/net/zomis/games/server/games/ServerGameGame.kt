@@ -1,6 +1,7 @@
 package net.zomis.games.server.games
 
 import klog.KLoggers
+import net.zomis.games.ais.GameController
 import net.zomis.games.common.PlayerIndex
 import net.zomis.games.dsl.GameEntryPoint
 import net.zomis.games.dsl.GameReplayableImpl
@@ -13,7 +14,7 @@ import net.zomis.games.server2.MessageRouter
 import net.zomis.games.server2.invites.InviteOptions
 import net.zomis.games.server2.invites.playerMessage
 
-class ServerGamePlayer(val client: Client)
+class ServerGamePlayer<T : Any>(val client: Client, val controller: GameController<T>? = null)
 
 class ServerGame<T : Any>(
     val callback: ServerGameWrapperCallback<T>,
@@ -62,14 +63,14 @@ class ServerGame<T : Any>(
 
 class ServerGamePlayers<T: Any>(private val serverGame: ServerGame<T>) {
     val playersCount: Int get() = playersInGame.size
-    val playersInGame = mutableListOf<ServerGamePlayer>()
+    val playersInGame = mutableListOf<ServerGamePlayer<T>>()
     internal val observers: MutableSet<Client> = mutableSetOf()
 
     fun playerIndex(message: ClientJsonMessage) = this.playerIndex(message.client, message.data["playerIndex"].asInt())
     fun playerIndex(client: Client, playerIndex: Int): PlayerIndex
             = if (playersInGame.getOrNull(playerIndex)?.client == client) playerIndex else null
 
-    fun addPlayers(players: List<ServerGamePlayer>) = playersInGame.addAll(players)
+    fun addPlayers(players: List<ServerGamePlayer<T>>) = playersInGame.addAll(players)
 
     fun broadcast(message: (Client) -> Any) {
         playersInGame.forEach { it.client.send(message.invoke(it.client)) }

@@ -9,6 +9,7 @@ import net.zomis.games.server.games.GameIdGenerator
 import net.zomis.games.server.games.ServerGameType
 import net.zomis.games.server.games.ServerGameTypeCallback
 import net.zomis.games.server2.*
+import net.zomis.games.server2.ais.ServerAI
 import net.zomis.games.server2.db.DBIntegration
 import net.zomis.games.server2.invites.playerMessage
 import java.util.UUID
@@ -25,6 +26,14 @@ class ServerGamesSystem(val executor: ScheduledExecutorService, val dbIntegratio
         .dynamic(dynamicRouter)
 
     fun getGameType(gameType: String): ServerGameType<Any>? = gameTypes[gameType]
+
+    fun addAIs(ais: List<ServerAI<out Any>>) {
+        ais.forEach { ai ->
+            val gameType = getGameType(ai.gameType)
+                ?: throw IllegalArgumentException("Cannot create AI ${ai.name} for non-existing game ${ai.gameType}")
+            gameType.addAI(ai as ServerAI<Any>)
+        }
+    }
 
     fun addGames(values: Collection<GameSpec<out Any>>): ServerGamesSystem {
         values.forEach {

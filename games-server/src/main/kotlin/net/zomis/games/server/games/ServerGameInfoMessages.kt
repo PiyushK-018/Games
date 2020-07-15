@@ -7,7 +7,7 @@ class ServerGameInfoMessages<T: Any>(val entryPoint: GameEntryPoint<T>, val game
 
     fun message(type: String): Map<String, Any> = mapOf("type" to type, "gameType" to this.entryPoint.gameType, "gameId" to this.gameId)
 
-    fun gameInfoMessage(players: List<ServerGamePlayer>, indices: List<Int>): Map<String, Any?> {
+    fun gameInfoMessage(players: List<ServerGamePlayer<T>>, indices: List<Int>): Map<String, Any?> {
         val playerData = players.asSequence().map { playerMessage(it.client) }.toList()
         return message("GameInfo")
             .plus("yourIndex" to indices.singleOrNull())

@@ -122,30 +122,28 @@ class Server2(val events: EventSystem) {
         if (config.githubClient.isNotEmpty()) {
             LinAuth(javalin, config.githubConfig(), config.googleConfig()).register()
         }
-        val aiRepository = AIRepository()//x
         if (config.database) {
             val dbIntegration = DBIntegration() // dep
             this.dbIntegration = dbIntegration
             features.add(dbIntegration::register)
-            LinReplay(aiRepository, dbIntegration).setup(javalin)// dep
+//            LinReplay(aiRepository, dbIntegration).setup(javalin)// dep
             LinStats(StatsDB(dbIntegration.superTable)).setup(events, javalin) // dep
         }
 
-        val gamesSystem2 = ServerGamesSystem(executor, dbIntegration).addGames(dslGames.values)
+        val gamesSystem2 = ServerGamesSystem(executor, dbIntegration)
+            .addGames(dslGames.values)
         messageRouter.route("games", gamesSystem2.router)
         messageRouter.route("lobby", gamesSystem2.lobby.router)
+        ServerAIs(dslGames.values).addAIs(events, gamesSystem2)
 
         val authCallback = AuthorizationCallback { dbIntegration?.superTable?.cookieAuth(it) }
         messageRouter.route("auth", AuthorizationSystem(events, authCallback).router)
-
-        events.with { e -> ServerAIs(aiRepository, dslGames.keys.toSet()).register(e, executor) }//x
 
         val engine = ScriptEngineManager().getEngineByExtension("kts")!!
         events.listen("Kotlin script", ConsoleEvent::class, {it.input.startsWith("kt ")}, {
             val result = engine.eval(it.input.substring("kt ".length))
             println(result)
         })
-//        events.with(TTTQLearn(gameSystem)::setup)//x
 
         events.listen("Stop Javalin", ShutdownEvent::class, {true}, {javalin.stop()})
         events.listen("Start Javalin", StartupEvent::class, {true}, {javalin.start()})
