@@ -31,31 +31,12 @@ class ServerAIs(private val dslGameTypes: Collection<GameSpec<out Any>>) {
         return actions.random()
     }
 
-    fun <T: Any> randomAction(game: ServerGame<T>, index: Int): Actionable<T, Any>? {
-        val controller = game.replayable!!.game
-        val actionable = randomActionable(controller, index)
-        return actionable
-    }
-
-    fun register(events: EventSystem, executor: ScheduledExecutorService) {
-        events.listen("ServerAIs Delayed move", DelayedAIMoves::class, {true}, {
-            executor.schedule({
-                try {
-                    val param = it as DelayedAIMoves<Any>
-                    param.game.actions.perform(param.action)
-                } catch (e: Exception) {
-                    logger.error(e, "Unable to call AI")
-                }
-            }, 1000, TimeUnit.MILLISECONDS)
-        })
-    }
-
     fun ais(): List<AIFactory<out Any>> {
 //        ServerAlphaBetaAIs(aiRepository).setup(events)
 //        ServerScoringAIs(aiRepository).setup(events)
         return dslGameTypes.map {gameSpec ->
             AIFactorySimple<Any>(gameSpec.name, "#AI_Random") { randomActionable(it.game, it.playerIndex) }
-        }
+        }.plus(ServerAlphaBetaAIs().ais())
     }
 
     fun aiClient(name: String, gameTypes: List<String>, events: EventSystem): AIClient {

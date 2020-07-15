@@ -1,10 +1,8 @@
 package net.zomis.games.server2.ais
 
 import net.zomis.core.events.EventSystem
-import net.zomis.games.dsl.Actionable
 import net.zomis.games.dsl.impl.GameImpl
 import net.zomis.games.scorers.ScorerController
-import net.zomis.games.server.games.ServerGame
 
 class AIRepository {
 
@@ -27,25 +25,11 @@ class AIRepository {
 //        scoringFactory.createAI(events, factory.gameType, factory.name, factory.createController())
     }
 
-    private fun <T: Any> alphaBetaConfigurations(factory: AlphaBetaAIFactory<T>): List<Pair<Int, AlphaBetaSpeedMode>> {
-        return (0 until factory.maxLevel).map {level ->
-            level to AlphaBetaSpeedMode.NORMAL
-        }.let {
-            if (factory.useSpeedModes) {
-                it.plus(factory.maxLevel to AlphaBetaSpeedMode.QUICK)
-                  .plus(factory.maxLevel to AlphaBetaSpeedMode.SLOW)
-            } else {
-                it.plus(factory.maxLevel to AlphaBetaSpeedMode.NORMAL)
-            }
-        }
-    }
-
     fun <T: Any> createAlphaBetaAIs(events: EventSystem, factory: AlphaBetaAIFactory<T>) {
         val repo = repositoryForGameType<T>(factory.gameType)
         repo.alphaBetaAIs[factory.namePrefix] = factory
-        val abFactory = AIFactoryAlphaBeta()
-        alphaBetaConfigurations(factory).forEach {
-            abFactory.createAlphaBetaAI(factory, events, it.first, it.second)
+        factory.alphaBetaConfigurations().map {
+            AIFactoryAlphaBeta(factory, it.first, it.second)
         }
     }
 
@@ -59,7 +43,7 @@ class AIRepository {
 
         val alphaBetaConfig = gameTypeRepo.alphaBetaAIs.entries.mapNotNull {entry ->
             val factory = entry.value
-            val configs = alphaBetaConfigurations(factory)
+            val configs = factory.alphaBetaConfigurations()
             val config = configs.find { factory.aiName(it.first, it.second) == aiName }
             if (config != null) {
                 AIAlphaBetaConfig(factory, config.first, config.second)
@@ -74,7 +58,7 @@ class AIRepository {
     fun queryableAIs(gameType: String): List<String> {
         val gameTypeRepo = repositoryForGameType<Any>(gameType)
         val abNames = gameTypeRepo.alphaBetaAIs.flatMap {factory ->
-            val abConfig = alphaBetaConfigurations(factory.value)
+            val abConfig = factory.value.alphaBetaConfigurations()
             abConfig.map { factory.value.aiName(it.first, it.second) }
         }
         return gameTypeRepo.scoringAIs.keys.sorted() + abNames

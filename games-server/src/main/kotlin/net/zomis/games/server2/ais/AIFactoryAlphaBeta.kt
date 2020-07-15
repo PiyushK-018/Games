@@ -4,9 +4,7 @@ import klog.KLoggers
 import kotlinx.coroutines.runBlocking
 import net.zomis.bestBy
 import net.zomis.common.pmap
-import net.zomis.core.events.EventSystem
-import net.zomis.games.ais.AlphaBeta
-import net.zomis.games.ais.noAvailableActions
+import net.zomis.games.ais.*
 import net.zomis.games.dsl.Actionable
 import net.zomis.games.dsl.impl.GameImpl
 
@@ -60,24 +58,29 @@ data class AIAlphaBetaConfig<T: Any>(val factory: AlphaBetaAIFactory<T>, val lev
     }
 
 }
-class AIFactoryAlphaBeta {
+class AIFactoryAlphaBeta<T: Any>(
+    private val factory: AlphaBetaAIFactory<T>,
+    private val depth: Int,
+    speedMode: AlphaBetaSpeedMode
+): AIFactory<T> {
+    val config = AIAlphaBetaConfig(factory, depth, speedMode)
 
     private val logger = KLoggers.logger(this)
 
-    fun <T: Any> createAlphaBetaAI(factory: AlphaBetaAIFactory<T>, events: EventSystem, depth: Int, speedMode: AlphaBetaSpeedMode) {
-        val alphaBetaConfig = AIAlphaBetaConfig(factory, depth, speedMode)
-//        ServerAI<T>(factory.gameType, factory.aiName(depth, speedMode)) { game, index ->
-//            val model = game.replayable!!.game
-//            if (noAvailableActions(model, index)) {
-//                return@ServerAI null
-//            }
-//
-//            logger.info { "Evaluating AlphaBeta options for ${factory.gameType} $depth" }
-//
-//            val options = alphaBetaConfig.evaluateActions(model, index)
-//            val move = options.bestBy { it.second }.random()
-//            return@ServerAI move.first
-//        }.register(events)
+    override val gameType: String = factory.gameType
+    override val playerName: String = factory.aiName(depth, speedMode)
+
+    override fun createController(): GameListeningController<T> {
+        val controller: GameController<T> = { ctx ->
+            if (noAvailableActions(ctx.game, ctx.playerIndex)) {
+                null
+            } else {
+                logger.info { "Evaluating AlphaBeta options for ${factory.gameType} $depth" }
+                val options = config.evaluateActions(ctx.game, ctx.playerIndex)
+                options.bestBy { it.second }.random().first
+            }
+        }
+        return GameIndependentController(controller)
     }
 
 }

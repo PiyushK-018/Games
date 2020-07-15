@@ -2,6 +2,7 @@ package net.zomis.games.server2.ais
 
 import klog.KLoggers
 import net.zomis.core.events.EventSystem
+import net.zomis.games.ais.AIFactory
 import net.zomis.games.dsl.impl.GameImpl
 import net.zomis.games.impl.TTQuixoController
 import net.zomis.games.impl.ttt.TTT3D
@@ -30,9 +31,23 @@ data class AlphaBetaAIFactory<S: Any>(
 ) {
     fun aiName(level: Int, speedMode: AlphaBetaSpeedMode)
         = "#AI_${this.namePrefix}_" + this.gameType + "_" + level + speedMode.nameSuffix
+
+    fun alphaBetaConfigurations(): List<Pair<Int, AlphaBetaSpeedMode>> {
+        return (0 until this.maxLevel).map {level ->
+            level to AlphaBetaSpeedMode.NORMAL
+        }.let {
+            if (this.useSpeedModes) {
+                it.plus(this.maxLevel to AlphaBetaSpeedMode.QUICK)
+                        .plus(this.maxLevel to AlphaBetaSpeedMode.SLOW)
+            } else {
+                it.plus(this.maxLevel to AlphaBetaSpeedMode.NORMAL)
+            }
+        }
+    }
+
 }
 
-class ServerAlphaBetaAIs(private val aiRepository: AIRepository) {
+class ServerAlphaBetaAIs {
     private val logger = KLoggers.logger(this)
 
     fun heuristicTTT(state: TTController, myIndex: Int): Double {
@@ -93,7 +108,7 @@ class ServerAlphaBetaAIs(private val aiRepository: AIRepository) {
     fun <T: Any> model(modelHeuristic: (game: T, myIndex: Int) -> Double): (GameImpl<T>, Int) -> Double =
             { gameImpl, index -> modelHeuristic(gameImpl.model, index) }
 
-    fun setup(events: EventSystem) {
+    fun ais(): List<AIFactory<out Any>> {
         val ttAB: AlphaBetaCopier<TTController> = { old, copy ->
             val moves = old.saveHistory()
             copy.makeMoves(moves)
@@ -123,14 +138,10 @@ class ServerAlphaBetaAIs(private val aiRepository: AIRepository) {
             AlphaBetaAIFactory(quixoAB,"Quixo", "AlphaBeta", 3, false, model(::heuristicQuixo)),
             AlphaBetaAIFactory(tt3Dab, "DSL-TTT3D", "AlphaBeta", 5, true, model(::heuristicTTT3D))
         )
-/*
-        events.listen("register AlphaBeta for TTController-games", GameTypeRegisterEvent::class, { event ->
-            aiFactories.any { it.gameType == event.gameType }
-        }, {event ->
-            aiFactories.filter { it.gameType == event.gameType }.forEach {factory: AlphaBetaAIFactory<out Any> ->
-                aiRepository.createAlphaBetaAIs(events, factory)
+        return aiFactories.flatMap { factory ->
+            factory.alphaBetaConfigurations().map { (level, mode) ->
+                AIFactoryAlphaBeta(factory, level, mode)
             }
-        })
-        */
+        }
     }
 }
